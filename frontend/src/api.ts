@@ -32,4 +32,22 @@ export async function apiRequest<T>(path: string, options: RequestInit = {}, acc
   return payload.data
 }
 
+export type SessionUser = { id: string; name: string; email: string; role: 'ADMIN' | 'PROJECT_MANAGER' | 'DEVELOPER'; mustChangePassword: boolean }
+export type SessionResult = { accessToken: string; user: SessionUser }
+
+async function csrfToken() {
+  return (await apiRequest<{ csrfToken: string }>('/auth/csrf')).csrfToken
+}
+
+export async function refreshSession() {
+  const csrf = await csrfToken()
+  return apiRequest<SessionResult>('/auth/refresh', { method: 'POST', headers: { 'x-csrf-token': csrf } })
+}
+
+export async function endSession() {
+  const csrf = await csrfToken()
+  await apiRequest('/auth/logout', { method: 'POST', headers: { 'x-csrf-token': csrf } })
+}
+
+export const SOCKET_URL = new URL(API_URL).origin
 export { API_URL }

@@ -4,9 +4,9 @@ A full-stack internal project operations dashboard for Admins, Project Managers,
 
 ## Current implementation status
 
-The frontend dashboards and the backend foundation are implemented. The backend includes the complete Prisma schema and initial migration, repeatable seed, role/ownership-scoped REST routes, JWT access tokens, rotated database-backed refresh sessions in an HttpOnly cookie, Argon2id passwords, Socket.IO WebSocket-only delivery, durable activity catch-up, notifications, presence, and a node-cron overdue worker.
+The application is connected end to end. The React dashboards read and mutate the Express API, restore sessions through the HttpOnly refresh cookie, enforce forced password changes, keep access tokens in memory, and connect through Socket.IO using WebSocket transport only. Admin, Project Manager, and Developer navigation and data are role-specific; task filters are reflected in shareable URL query parameters.
 
-The frontend still uses local demo data and must be connected to these endpoints. A real Neon connection has not been supplied yet, so the migration, seed, database integration tests, and end-to-end realtime verification have not been run against the target database.
+The backend includes the complete Prisma schema and migration, repeatable Neon seed, role/ownership-scoped REST routes, JWT access tokens, rotated database-backed refresh sessions, Argon2id passwords, durable activity catch-up, notifications, presence, and a node-cron overdue worker. The Neon-backed mutation path and role-filtered WebSocket delivery have been exercised end to end with the seeded Developer and Project Manager accounts.
 
 ## Local setup with Neon
 
@@ -35,6 +35,8 @@ pnpm typecheck
 pnpm test
 pnpm build
 ```
+
+These commands currently pass for every workspace package. A Neon-backed smoke test also verified Developer login, assigned-task isolation, optimistic task status mutation, delivery of the activity event to the Developer, delivery of the notification signal to the owning PM, and restoration of the test task.
 
 The seed is repeatable and uses stable identifiers/upserts. It never truncates the database. It creates exactly 1 Admin, 2 Project Managers, 4 Developers, 3 clients, 3 projects, 15 tasks (5 per project), multiple stored activity events, example notifications, and at least 2 already-overdue tasks. Demo emails are `anika@velozity.dev`, `maya@velozity.dev`, `rohan@velozity.dev`, `aarav@velozity.dev`, `ishita@velozity.dev`, `noah@velozity.dev`, and `kabir@velozity.dev`; their passwords come only from the `SEED_*_PASSWORD` environment variables.
 
@@ -150,12 +152,21 @@ VITE_API_URL=https://YOUR-RENDER-SERVICE.onrender.com/api/v1
 
 Verify the deployment at `https://YOUR-RENDER-SERVICE.onrender.com/api/v1/health/ready`, then log in through the Vercel frontend and test a member creation/request.
 
+The repository-level `vercel.json` rewrites application routes to `index.html`, so refreshing `/admin`, `/pm/tasks`, or `/developer/activity` does not produce a Vercel 404. `VITE_API_URL` is a public build-time configuration value, not a secret; set it as a Vercel **Config** value rather than storing it in the backend `.env`.
+
+## Assessment explanation (198 words)
+
+The hardest part was making real-time updates obey exactly the same permissions as normal API requests. It is easy to broadcast every task event to every connected browser, but that would expose project and developer data across roles. I made PostgreSQL the source of truth and store each activity event in the same transaction as the task change. Only after that transaction commits does the server publish the event. Socket.IO authenticates the connection with the short-lived access token, reloads the database-backed session, and places users only in server-controlled rooms. Admins receive the global stream, Project Managers receive events from projects they own, and Developers receive events only for tasks currently assigned to them. Reassignment also removes the former developer's live access.
+
+Reconnect handling was another important detail. The client first asks the socket server for an authorized database watermark, then fetches the latest 20 visible events from PostgreSQL and deduplicates them with buffered live events. This avoids relying on process memory and keeps recovery correct after a restart. I chose Socket.IO for authenticated handshakes, rooms, acknowledgements, and reconnect support, while forcing WebSocket transport so there is no polling fallback.
+
+With more time, I would add Playwright tests running three simultaneous browser contexts against an isolated PostgreSQL database, plus a transactional outbox and Redis adapter for reliable multi-instance delivery.
+
 ## Known limitations
 
-- The React prototype is not yet connected to the backend and still uses local data.
-- Neon migration/seed and real-Postgres integration/E2E tests await the target connection strings.
 - Presence and Socket.IO rooms assume one API instance. Horizontal scaling needs shared coordination.
 - The commit-then-emit window has no transactional outbox; reconnect replay recovers durable events after a process crash.
 - Reconnect automatically returns the newest 20 missed items; older authorized history remains available through cursor pagination.
 - Overdue processing requires an awake persistent server and can lag by approximately one minute.
 - There is no email delivery or password-reset email flow; Admins issue temporary passwords.
+- The automated suites cover frontend API behavior and backend security primitives; the Neon-backed multi-role API/WebSocket path is currently a smoke test rather than a committed isolated-database test suite.
