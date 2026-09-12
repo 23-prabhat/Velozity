@@ -2,7 +2,8 @@ const DEFAULT_API_URL = import.meta.env.PROD
   ? 'https://velozity-jspi.onrender.com/api/v1'
   : 'http://127.0.0.1:4000/api/v1'
 
-const API_URL = (import.meta.env.VITE_API_URL || DEFAULT_API_URL).replace(/\/$/, '')
+const configuredApiUrl = (import.meta.env.VITE_API_URL || DEFAULT_API_URL).replace(/\/+$/, '')
+const API_URL = configuredApiUrl.endsWith('/api/v1') ? configuredApiUrl : `${configuredApiUrl}/api/v1`
 
 type ErrorPayload = { error?: { message?: string; code?: string } }
 
