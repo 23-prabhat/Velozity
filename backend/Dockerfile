@@ -15,4 +15,4 @@ WORKDIR /app
 ENV NODE_ENV=production
 COPY --from=build /app /app
 EXPOSE 4000
-CMD ["pnpm", "--filter", "@velozity/backend", "start"]
+CMD ["sh", "-c", "pnpm --filter @velozity/backend exec prisma migrate deploy && exec pnpm --filter @velozity/backend start"]

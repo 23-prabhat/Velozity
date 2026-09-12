@@ -126,7 +126,29 @@ Node-cron is appropriate for this small, single-instance assessment because the 
 
 Express was chosen for its small middleware surface and direct integration with the single HTTP/Socket.IO server. Controllers/routes translate HTTP only; services own permissions and transactions; Prisma owns database access; reusable policy builders apply the same role scopes to lists, detail, history, dashboards, and live recipients. Application code is TypeScript throughout.
 
-The recommended deployment is the Vercel React frontend plus one persistent Node container for Express, Socket.IO, and node-cron, backed by Neon PostgreSQL. Vercel proxies `/api` for a first-party refresh cookie; WSS connects to the persistent backend with its allowed origin.
+The deployment uses the Vercel React frontend plus one persistent Node container for Express, Socket.IO, and node-cron, backed by Neon PostgreSQL. The instructions below connect Vercel directly to Render; a same-origin Vercel `/api` proxy can be added later if browser third-party-cookie restrictions interfere with refresh sessions.
+
+## Render deployment
+
+The repository includes `render.yaml` for a Docker deployment. The important monorepo detail is that the Docker build context must be the repository root: the backend depends on the root pnpm lock/workspace files and `packages/contracts`.
+
+For an existing Render web service, use these **Build & Deploy** settings:
+
+- Root Directory: leave blank
+- Language/Runtime: Docker
+- Dockerfile Path: `./backend/Dockerfile`
+- Docker Build Context Directory: `.`
+- Health Check Path: `/api/v1/health/ready`
+
+Set `DATABASE_URL`, `DIRECT_URL`, and `JWT_ACCESS_SECRET` as secret environment variables. Set `FRONTEND_ORIGIN=https://velozity-frontend-iota.vercel.app`, and keep that URL plus the required local 5173/5174 origins in `FRONTEND_ORIGINS`. Because the frontend and API are currently on different HTTPS sites, use `COOKIE_SECURE=true` and `COOKIE_SAME_SITE=none`. The Docker start command runs the committed Prisma migrations before starting the API, so this works on Render's Free plan without its paid pre-deploy feature.
+
+After Render supplies the backend URL, set this Vercel project environment variable and redeploy the frontend:
+
+```text
+VITE_API_URL=https://YOUR-RENDER-SERVICE.onrender.com/api/v1
+```
+
+Verify the deployment at `https://YOUR-RENDER-SERVICE.onrender.com/api/v1/health/ready`, then log in through the Vercel frontend and test a member creation/request.
 
 ## Known limitations
 

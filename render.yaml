@@ -1,0 +1,24 @@
+services:
+  - type: web
+    name: velozity-backend
+    runtime: docker
+    dockerfilePath: ./backend/Dockerfile
+    dockerContext: .
+    healthCheckPath: /api/v1/health/ready
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: DATABASE_URL
+        sync: false
+      - key: DIRECT_URL
+        sync: false
+      - key: JWT_ACCESS_SECRET
+        sync: false
+      - key: FRONTEND_ORIGIN
+        value: https://velozity-frontend-iota.vercel.app
+      - key: FRONTEND_ORIGINS
+        value: https://velozity-frontend-iota.vercel.app,http://127.0.0.1:5173,http://localhost:5173,http://127.0.0.1:5174,http://localhost:5174
+      - key: COOKIE_SECURE
+        value: "true"
+      - key: COOKIE_SAME_SITE
+        value: none
