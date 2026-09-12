@@ -21,6 +21,11 @@ const apiUserToManaged = (user: ApiUser): ManagedUser => ({ id: user.id, name: u
 const apiRequestToMember = (request: ApiMemberRequest): MemberRequest => ({ ...request, requestedBy: request.requestedBy.name, createdAt: new Date(request.createdAt).toLocaleString() })
 
 const roleRoot: Record<WorkspaceRole, string> = { ADMIN: '/admin', PM: '/pm', DEVELOPER: '/developer' }
+const demoCredentials = {
+  admin: { email: currentAdmin.email, password: 'ChangeMe-Admin-2026!' },
+  pm: { email: currentManager.email, password: 'ChangeMe-PM-2026!' },
+  developer: { email: currentDeveloper.email, password: 'ChangeMe-Developer-2026!' },
+} as const
 const routeTo = (path: string, replace = false) => window.history[replace ? 'replaceState' : 'pushState'](null, '', path)
 const viewFromPath = <T extends string,>(root: string, allowed: readonly T[], fallback: T): T => {
   const segment = window.location.pathname.replace(new RegExp(`^${root}/?`), '').split('/')[0]
@@ -129,7 +134,7 @@ function AuthScreen({ onAuthenticate, onAdminSetup }: { onAuthenticate: (role: W
           {mode === 'signup' && <label>Company setup code<input name="setupCode" required placeholder="Code from your company invitation"/></label>}
           <button className="button button--primary button--block" type="submit" disabled={submitting}>{submitting ? 'Connecting…' : mode === 'login' ? 'Enter workspace' : 'Create Admin account'} <Icon name="arrow" size={17}/></button>
         </form>
-        {mode === 'login' && <div className="demo-accounts"><span>DEMO ACCOUNTS · USE THE SEED PASSWORD FROM .env</span><button type="button" onClick={() => { setEmail(currentAdmin.email); setPassword(''); setError('') }}><Avatar initials="AV" tone="blue"/><span><b>Administrator</b><small>{currentAdmin.email}</small></span><Icon name="arrow" size={14}/></button><button type="button" onClick={() => { setEmail(currentManager.email); setPassword(''); setError('') }}><Avatar initials="MC" tone="orange"/><span><b>Project manager</b><small>{currentManager.email}</small></span><Icon name="arrow" size={14}/></button><button type="button" onClick={() => { setEmail(currentDeveloper.email); setPassword(''); setError('') }}><Avatar initials="AS" tone="lime"/><span><b>Developer</b><small>{currentDeveloper.email}</small></span><Icon name="arrow" size={14}/></button></div>}
+        {mode === 'login' && <div className="demo-accounts"><span>DEMO ACCOUNTS · CLICK TO FILL CREDENTIALS</span><button type="button" onClick={() => { setEmail(demoCredentials.admin.email); setPassword(demoCredentials.admin.password); setError('') }}><Avatar initials="AV" tone="blue"/><span><b>Administrator</b><small>{demoCredentials.admin.email}<br/>Password: {demoCredentials.admin.password}</small></span><Icon name="arrow" size={14}/></button><button type="button" onClick={() => { setEmail(demoCredentials.pm.email); setPassword(demoCredentials.pm.password); setError('') }}><Avatar initials="MC" tone="orange"/><span><b>Project manager</b><small>{demoCredentials.pm.email}<br/>Password: {demoCredentials.pm.password}</small></span><Icon name="arrow" size={14}/></button><button type="button" onClick={() => { setEmail(demoCredentials.developer.email); setPassword(demoCredentials.developer.password); setError('') }}><Avatar initials="AS" tone="lime"/><span><b>Developer</b><small>{demoCredentials.developer.email}<br/>Password: {demoCredentials.developer.password}</small></span><Icon name="arrow" size={14}/></button></div>}
       </div>
     </section>
   </main>
