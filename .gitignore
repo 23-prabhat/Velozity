@@ -1,0 +1,12 @@
+node_modules/
+dist/
+coverage/
+*.log
+.env
+backend/.env
+frontend/.env
+!.env.example
+!**/.env.example
+.DS_Store
+.idea/
+.vscode/

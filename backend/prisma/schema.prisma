@@ -1,0 +1,203 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+enum Role {
+  ADMIN
+  PROJECT_MANAGER
+  DEVELOPER
+}
+
+enum TaskStatus {
+  TODO
+  IN_PROGRESS
+  IN_REVIEW
+  DONE
+}
+
+enum Priority {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
+enum ActivityType {
+  PROJECT_CREATED
+  TASK_CREATED
+  TASK_ASSIGNED
+  TASK_UPDATED
+  STATUS_CHANGED
+  TASK_OVERDUE
+}
+
+enum NotificationType {
+  TASK_ASSIGNED
+  TASK_IN_REVIEW
+}
+
+enum MemberRequestStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+model User {
+  id              String          @id @default(uuid()) @db.Uuid
+  name            String          @db.VarChar(120)
+  email           String          @unique @db.VarChar(255)
+  passwordHash    String
+  role            Role
+  isActive        Boolean         @default(true)
+  mustChangePassword Boolean      @default(true)
+  createdAt       DateTime        @default(now()) @db.Timestamptz(3)
+  updatedAt       DateTime        @updatedAt @db.Timestamptz(3)
+  projectsCreated Project[]       @relation("ProjectCreator")
+  assignedTasks   Task[]          @relation("TaskAssignee")
+  activityEvents  ActivityEvent[] @relation("ActivityActor")
+  notifications   Notification[]
+  refreshSessions RefreshSession[]
+  clientsCreated  Client[]        @relation("ClientCreator")
+  memberRequests  MemberRequest[] @relation("MemberRequester")
+  reviewedRequests MemberRequest[] @relation("MemberReviewer")
+
+  @@index([role, isActive])
+}
+
+model RefreshSession {
+  id           String    @id @default(uuid()) @db.Uuid
+  userId       String    @db.Uuid
+  tokenHash    String    @unique
+  familyId     String    @db.Uuid
+  expiresAt    DateTime  @db.Timestamptz(3)
+  usedAt       DateTime? @db.Timestamptz(3)
+  revokedAt    DateTime? @db.Timestamptz(3)
+  replacedById String?   @unique @db.Uuid
+  createdAt    DateTime  @default(now()) @db.Timestamptz(3)
+  user         User      @relation(fields: [userId], references: [id], onDelete: Restrict)
+  replacedBy   RefreshSession? @relation("SessionRotation", fields: [replacedById], references: [id])
+  replacedFrom RefreshSession? @relation("SessionRotation")
+
+  @@index([userId])
+  @@index([familyId])
+  @@index([expiresAt])
+}
+
+model Client {
+  id           String    @id @default(uuid()) @db.Uuid
+  name         String    @db.VarChar(160)
+  contactName  String?   @db.VarChar(120)
+  contactEmail String?   @db.VarChar(255)
+  createdById  String    @db.Uuid
+  archivedAt   DateTime? @db.Timestamptz(3)
+  createdAt    DateTime  @default(now()) @db.Timestamptz(3)
+  updatedAt    DateTime  @updatedAt @db.Timestamptz(3)
+  createdBy    User      @relation("ClientCreator", fields: [createdById], references: [id], onDelete: Restrict)
+  projects     Project[]
+
+  @@index([createdById, archivedAt])
+  @@index([name])
+}
+
+model Project {
+  id          String    @id @default(uuid()) @db.Uuid
+  clientId    String    @db.Uuid
+  createdById String    @db.Uuid
+  name        String    @db.VarChar(180)
+  description String    @db.VarChar(2000)
+  archivedAt  DateTime? @db.Timestamptz(3)
+  createdAt   DateTime  @default(now()) @db.Timestamptz(3)
+  updatedAt   DateTime  @updatedAt @db.Timestamptz(3)
+  client      Client    @relation(fields: [clientId], references: [id], onDelete: Restrict)
+  createdBy   User      @relation("ProjectCreator", fields: [createdById], references: [id], onDelete: Restrict)
+  tasks       Task[]
+  activityEvents ActivityEvent[]
+
+  @@index([createdById, archivedAt, createdAt])
+  @@index([clientId])
+}
+
+model Task {
+  id                  String     @id @default(uuid()) @db.Uuid
+  number              Int        @unique @default(autoincrement())
+  projectId           String     @db.Uuid
+  assignedDeveloperId String     @db.Uuid
+  title               String     @db.VarChar(240)
+  description         String     @db.VarChar(3000)
+  status              TaskStatus @default(TODO)
+  priority            Priority   @default(MEDIUM)
+  dueAt               DateTime   @db.Timestamptz(3)
+  isOverdue           Boolean    @default(false)
+  overdueMarkedAt     DateTime?  @db.Timestamptz(3)
+  version             Int        @default(1)
+  createdAt           DateTime   @default(now()) @db.Timestamptz(3)
+  updatedAt           DateTime   @updatedAt @db.Timestamptz(3)
+  project             Project    @relation(fields: [projectId], references: [id], onDelete: Restrict)
+  assignedDeveloper   User       @relation("TaskAssignee", fields: [assignedDeveloperId], references: [id], onDelete: Restrict)
+  activityEvents      ActivityEvent[]
+  notifications       Notification[]
+
+  @@index([projectId, status, dueAt])
+  @@index([assignedDeveloperId, priority, dueAt, id])
+  @@index([projectId, priority, dueAt])
+}
+
+model ActivityEvent {
+  sequence   BigInt       @id @default(autoincrement())
+  id         String       @unique @default(uuid()) @db.Uuid
+  projectId  String       @db.Uuid
+  taskId     String?      @db.Uuid
+  actorId    String?      @db.Uuid
+  type       ActivityType
+  fromStatus TaskStatus?
+  toStatus   TaskStatus?
+  metadata   Json?
+  createdAt  DateTime     @default(now()) @db.Timestamptz(3)
+  project    Project      @relation(fields: [projectId], references: [id], onDelete: Restrict)
+  task       Task?        @relation(fields: [taskId], references: [id], onDelete: Restrict)
+  actor      User?        @relation("ActivityActor", fields: [actorId], references: [id], onDelete: SetNull)
+  notifications Notification[]
+
+  @@index([projectId, sequence])
+  @@index([taskId, sequence])
+  @@index([createdAt])
+}
+
+model Notification {
+  id              String           @id @default(uuid()) @db.Uuid
+  recipientId     String           @db.Uuid
+  taskId          String           @db.Uuid
+  activityEventId String           @db.Uuid
+  type            NotificationType
+  readAt          DateTime?        @db.Timestamptz(3)
+  createdAt       DateTime         @default(now()) @db.Timestamptz(3)
+  recipient       User             @relation(fields: [recipientId], references: [id], onDelete: Restrict)
+  task            Task             @relation(fields: [taskId], references: [id], onDelete: Restrict)
+  activityEvent   ActivityEvent    @relation(fields: [activityEventId], references: [id], onDelete: Restrict)
+
+  @@unique([recipientId, activityEventId, type])
+  @@index([recipientId, readAt, createdAt])
+}
+
+model MemberRequest {
+  id            String              @id @default(uuid()) @db.Uuid
+  requestedById String              @db.Uuid
+  reviewedById  String?             @db.Uuid
+  name          String              @db.VarChar(120)
+  email         String              @db.VarChar(255)
+  reason        String              @db.VarChar(1000)
+  status        MemberRequestStatus @default(PENDING)
+  reviewedAt    DateTime?           @db.Timestamptz(3)
+  createdAt     DateTime            @default(now()) @db.Timestamptz(3)
+  requestedBy   User                @relation("MemberRequester", fields: [requestedById], references: [id], onDelete: Restrict)
+  reviewedBy    User?               @relation("MemberReviewer", fields: [reviewedById], references: [id], onDelete: Restrict)
+
+  @@index([status, createdAt])
+  @@index([requestedById, createdAt])
+}

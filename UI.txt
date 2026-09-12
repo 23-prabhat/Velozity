@@ -1,0 +1,71 @@
+DESIGN SYSTEM — VELOZITY BRUTALIST UI
+
+Build the entire application using a professional brutalist
+dashboard aesthetic.
+
+COLOR PALETTE:
+
+Primary Background: #F4F0E6
+Surface/Card:       #FFFDF5
+Primary Text:       #111111
+Secondary Text:     #555555
+Muted Text:         #888888
+Borders:            #111111
+
+Primary Accent:     #FF5A36  (orange-red)
+Secondary Accent:   #C8FF00  (acid/lime green)
+Info:               #4D7CFE  (blue)
+Success:            #3FAE6A  (green)
+Warning:            #F2B134  (amber)
+Danger:             #E63946  (red)
+
+DESIGN RULES:
+
+1. Use #F4F0E6 as the primary application background.
+2. Use #FFFDF5 for cards, panels and elevated surfaces.
+3. Use #111111 for primary text and borders.
+4. Use 2px solid #111111 borders for major UI containers.
+5. Avoid gradients completely.
+6. Avoid glassmorphism completely.
+7. Avoid excessive rounded corners.
+8. Prefer square or very small border-radius (0–6px).
+9. Use hard offset shadows occasionally:
+   4px 4px 0px #111111
+   Do NOT use soft/blurry shadows everywhere.
+10. Use #FF5A36 as the main brand/action color.
+11. Use #C8FF00 sparingly for visual emphasis.
+12. Status colors must communicate meaning and should not
+    be used decoratively.
+13. Do not use purple gradients or generic blue/purple SaaS styling.
+14. Do not put every piece of information inside a rounded card.
+15. Prefer structured tables, grids, dividers and whitespace.
+16. Keep the UI highly functional and information-dense.
+17. Typography should be bold and confident for headings,
+    but body text must remain highly readable.
+18. Use uppercase labels selectively for navigation,
+    metadata and status indicators.
+19. Maintain strong contrast and accessibility.
+20. The design should feel like a real professional internal
+    project-management product, not an experimental art website.
+
+VISUAL PERSONALITY:
+
+Professional brutalism
++ editorial dashboard
++ productivity software
++ high information density
++ bold typography
++ hard borders
++ warm paper background
++ orange/acid-green accents
+
+Avoid:
+- AI-slop aesthetic
+- excessive rounded cards
+- gradients
+- glassmorphism
+- floating blobs
+- excessive animations
+- neon glow
+- excessive shadows
+- purple/indigo SaaS aesthetic
