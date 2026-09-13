@@ -9,7 +9,7 @@ import { authenticate } from '../../middleware/authenticate.js'
 import { hashPassword, verifyPassword } from '../../lib/password.js'
 import { validate } from '../../middleware/validate.js'
 import { csrfMatches, login, logout, rotate } from './auth.service.js'
-import { changePasswordSchema, loginSchema } from './auth.schemas.js'
+import { changePasswordSchema, loginSchema, setupSchema } from './auth.schemas.js'
 import { committedEvents } from '../../realtime/events.js'
 
 export const authRouter = Router()
@@ -31,6 +31,20 @@ authRouter.post('/login', rateLimit({ windowMs: 60_000, limit: 10, standardHeade
   const result = await login(request.body.email, request.body.password)
   response.cookie(env.COOKIE_NAME, result.refreshToken, refreshCookie)
   response.json({ data: { accessToken: result.accessToken, user: result.user } })
+}))
+
+authRouter.post('/setup', rateLimit({ windowMs: 60_000, limit: 5, standardHeaders: true, legacyHeaders: false }), validate(setupSchema), asyncHandler(async (request, response) => {
+  requireApprovedOrigin(request.header('origin'))
+  const passwordHash = await hashPassword(request.body.password)
+  const user = await prisma.$transaction(async (tx) => {
+    // Company setup is deliberately one-time. After the first account exists,
+    // only an authenticated Admin can add PMs and Developers through /users.
+    if (await tx.user.count()) throw new AppError(409, 'COMPANY_ALREADY_SETUP', 'Company setup is complete. Ask an Admin to create your account.')
+    return tx.user.create({ data: { name: request.body.name, email: request.body.email, passwordHash, role: 'ADMIN', mustChangePassword: false } })
+  }, { isolationLevel: 'Serializable', maxWait: 10_000, timeout: 20_000 })
+  const result = await login(user.email, request.body.password)
+  response.cookie(env.COOKIE_NAME, result.refreshToken, refreshCookie)
+  response.status(201).json({ data: { accessToken: result.accessToken, user: result.user } })
 }))
 
 authRouter.post('/refresh', asyncHandler(async (request, response) => {
